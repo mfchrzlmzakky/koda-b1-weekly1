@@ -25,13 +25,18 @@ const menuData = {
   ],
 };
 
-const keranjangPesanan = [];
+const cart = [];
+
+function formatRupiah(price) {
+  return "Rp" + price.toLocaleString("id-ID");
+}
 
 function showItems(title, items) {
   console.log(`\n${title}`);
   items.forEach((item) => {
-    console.log(`${item.id}. ${item.name} - ${item.price}`);
+    console.log(`${item.id}. ${item.name} - ${formatRupiah(item.price)}`);
   });
+  console.log("0. Kembali");
 }
 
 async function showCategories() {
@@ -61,11 +66,10 @@ async function showCategories() {
   }
 }
 
-async function orderItem(title, data, subtitle, category) {
+async function orderItem(title, data, prompt, category) {
   while (true) {
     showItems(title, data);
-    console.log("0. Kembali");
-    const ans = await rl.question(subtitle);
+    const ans = await rl.question(prompt);
     console.log("=======");
     if (Number(ans) > 0 && Number(ans) <= data.length) {
       while (true) {
@@ -75,12 +79,11 @@ async function orderItem(title, data, subtitle, category) {
         if (Number(ans2) > 0) {
           for (let i = 0; i < data.length; i++) {
             if (Number(ans) === i + 1) {
-              for (let j = 0; j < Number(ans2); j++) {
-                keranjangPesanan.push(data[i]);
-              }
+              const data2 = data[i];
+              cart.push({ ...data2, qty: Number(ans2) });
             }
           }
-          console.log(keranjangPesanan);
+          console.log(cart);
           break;
         } else {
           console.log("Jumlah pesanan harus berupa angka & lebih dari 0\n=======");
@@ -94,32 +97,55 @@ async function orderItem(title, data, subtitle, category) {
   }
 }
 
+function showCart() {
+  console.log("Keranjang");
+  console.log(cart);
+
+  if (cart.length === 0) {
+    console.log("Keranjang masih kosong!");
+    return;
+  }
+  let total = 0;
+  cart.forEach((item) => {
+    const subTotal = item.price * item.qty;
+    total += subTotal;
+    console.log(`${item.name} x ${item.qty}= ${formatRupiah(subTotal)}`);
+  });
+  console.log(`Total= ${formatRupiah(total)}`);
+}
+
 async function main() {
-  while (true) {
-    console.log(`\n=======\nMIE GACOAN`);
-    console.log("1. Daftar Makanan & Minuman");
-    console.log("2. Keranjang");
-    console.log("3. Loyalitas Pelanggan");
-    console.log("0. Keluar");
-    const ans = await rl.question("-------\nPilih menu nomor berapa? ");
-    console.log("=======");
-    switch (ans) {
-      case "1":
-        await showCategories();
-        break;
-      case "2":
-        console.log("Keranjang Belanja");
-        break;
-      case "3":
-        console.log("Pelanggan Setia");
-        break;
-      case "0":
-        console.log("Terimakasih\n=======");
-        rl.close();
-        return;
-      default:
-        console.log(`Menu "${ans}" tidak ada!\n=======`);
+  try {
+    while (true) {
+      console.log(`\n=======\nMIE GACOAN`);
+      console.log("1. Daftar Makanan & Minuman");
+      console.log("2. Keranjang");
+      console.log("3. Loyalitas Pelanggan");
+      console.log("0. Keluar");
+      const ans = await rl.question("-------\nPilih menu nomor berapa? ");
+      console.log("=======");
+      switch (ans) {
+        case "1":
+          await showCategories();
+          break;
+        case "2":
+          // console.log("Keranjang Belanja");
+          showCart();
+          break;
+        case "3":
+          console.log("Pelanggan Setia");
+          break;
+        case "0":
+          console.log("Terimakasih\n=======");
+          return;
+        default:
+          console.log(`Menu "${ans}" tidak ada!\n=======`);
+      }
     }
+  } catch (error) {
+    console.log("\nProgram dihentikan: ", error.message);
+  } finally {
+    rl.close();
   }
 }
 
