@@ -1,6 +1,7 @@
 const readline = require("node:readline/promises");
 const { stdin: input, stdout: output } = require("node:process");
 const rl = readline.createInterface({ input, output });
+const url = "https://jsonplaceholder.typicode.com/users";
 
 const menuData = {
   mie: [
@@ -25,28 +26,30 @@ const menuData = {
   ],
 };
 
-const cart = { nama: "", statusBayar: "", pesanan: [] };
-
-function resetCart() {
-  cart.nama = "";
-  cart.statusBayar = "";
-  cart.pesanan = [];
-}
+const cart = {
+  nama: "",
+  statusBayar: "",
+  pesanan: [],
+  getTotal() {
+    return this.pesanan.reduce(function (total, item) {
+      return total + item.price * item.qty;
+    }, 0);
+  },
+  reset() {
+    this.nama = "";
+    this.statusBayar = "";
+    this.pesanan = [];
+  },
+};
 
 function formatRupiah(price) {
-  return "Rp" + price.toLocaleString("id-ID");
-}
-
-function calculateTotal() {
-  let total = 0;
-  cart.pesanan.forEach((item) => {
-    total += item.price * item.qty;
-  });
-  return total;
+  if (typeof price === "number") {
+    return "Rp" + price.toLocaleString("id-ID");
+  }
 }
 
 function showItems(title, items) {
-  console.log(`\n${title}`);
+  console.log(`\n=======\n${title}`);
   items.forEach((item) => {
     console.log(`${item.id}. ${item.name} - ${formatRupiah(item.price)}`);
   });
@@ -115,47 +118,56 @@ async function showCategories() {
     let lunas = false;
     switch (ans) {
       case "1":
-        lunas = await orderItem("=======\nDaftar Mie", menuData.mie, "-------\nPilih mie: ", "Mie");
+        lunas = await orderItem("Daftar Mie", menuData.mie, "-------\nPilih mie: ", "Mie");
         break;
       case "2":
-        lunas = await orderItem("=======\nDaftar Minuman", menuData.drink, "-------\nPilih minuman: ", "Minuman");
+        lunas = await orderItem("Daftar Minuman", menuData.drink, "-------\nPilih minuman: ", "Minuman");
         break;
       case "3":
-        lunas = await orderItem("=======\nDaftar Dimsum", menuData.dimsum, "-------\nPilih dimsum: ", "Dimsum");
+        lunas = await orderItem("Daftar Dimsum", menuData.dimsum, "-------\nPilih dimsum: ", "Dimsum");
         break;
       case "0":
         return;
       default:
         console.log(`Kategori "${ans}" tidak ada!\n=======`);
     }
-    if (lunas) return;
+    if (lunas) {
+      return;
+    }
   }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function pay() {
   let nama = "";
-  while (nama === "") {
+  do {
     nama = (await rl.question("Atas nama siapa? ")).trim();
     if (nama === "") {
       console.log("Nama tidak boleh kosong!");
     }
-  }
+  } while (nama === "");
   console.log("=======");
   cart.nama = nama;
   cart.statusBayar = "Lunas";
+  console.log("\n=======\nMemproses pembayaran....\n=======");
+  await delay(2000);
   console.log("\n=====================");
   console.log("MIE GACOAN");
   console.log("---------------------");
   console.log("STRUK PEMBELIAN");
   console.log("---------------------");
   cart.pesanan.forEach((item) => {
-    console.log(`${item.name} x ${item.qty} = ${formatRupiah(item.price * item.qty)}`);
+    console.log(`${item.name}`);
+    console.log(`${formatRupiah(item.price)} x ${item.qty} = ${formatRupiah(item.price * item.qty)}`);
   });
-  console.log(`---------------------\nTotal = ${formatRupiah(calculateTotal())}`);
+  console.log(`---------------------\nTotal = ${formatRupiah(cart.getTotal())}`);
   console.log(`---------------------\nAtas Nama ${cart.nama}`);
   console.log(`Status    ${cart.statusBayar}`);
   console.log("---------------------\nTerimakasih\n=====================");
-  resetCart();
+  cart.reset();
 }
 
 async function showCart() {
@@ -164,13 +176,13 @@ async function showCart() {
     console.log("Keranjang masih kosong!\n=======");
     return false;
   }
-  cart.pesanan.forEach((item) => {
-    console.log(`${item.name} x ${item.qty} = ${formatRupiah(item.price * item.qty)}`);
+  cart.pesanan.forEach(({ name, price, qty }) => {
+    console.log(`${name} x ${qty} = ${formatRupiah(price * qty)}`);
   });
-  console.log(`-------\nTotal = ${formatRupiah(calculateTotal())}\n=======`);
+  console.log(`-------\nTotal = ${formatRupiah(cart.getTotal())}\n=======`);
   while (true) {
     console.log("1. Bayar sekarang");
-    console.log("0. kembali");
+    console.log("0. Kembali");
     const ans = await rl.question(`-------\nPilih : `);
     console.log("=======");
     if (ans === "1") {
@@ -179,10 +191,29 @@ async function showCart() {
     } else if (ans === "0") {
       return false;
     } else {
-      console.log(`pilihan "${ans}" tidak ada!\n=======\n\n=======`);
+      console.log(`Pilihan "${ans}" tidak ada!\n=======\n\n=======`);
     }
   }
 }
+
+// async function getUsers() {
+//   try {
+//     const response = await fetch(url);
+//     const data = await response.json();
+//     if (!Array.isArray(data)) {
+//       throw new Error("Format data tidak sesuai!");
+//     }
+//     let i = 1;
+//     console.log("\n=======\nDAFTAR PELANGGAN SETIA\n");
+//     data.forEach((item) => {
+//       console.log(`${i}. ${item.name}`);
+//       i++;
+//     });
+//     console.log("=======");
+//   } catch (error) {
+//     console.error(error);
+//   }
+// }
 
 async function main() {
   try {
@@ -202,7 +233,24 @@ async function main() {
           await showCart();
           break;
         case "3":
-          console.log("Pelanggan Setia");
+          // await getUsers();
+          await fetch(url)
+            .then((response) => {
+              return response.json();
+            })
+            .then((data) => {
+              if (!Array.isArray(data)) {
+                throw new Error("Format data tidak sesuai!");
+              }
+              console.log("\n=======\nDAFTAR PELANGGAN SETIA\n");
+              for (let i = 0; i < data.length; i++) {
+                console.log(`${i + 1}. ${data[i].name}`);
+              }
+              console.log("=======");
+            })
+            .catch((err) => {
+              console.error(`Error: ${err}`);
+            });
           break;
         case "0":
           console.log("Terimakasih\n=======");
@@ -212,7 +260,11 @@ async function main() {
       }
     }
   } catch (error) {
-    console.log("\nProgram dihentikan: ", error.message);
+    if (error instanceof Error) {
+      console.log("\nProgram dihentikan: ", error.message);
+    } else {
+      console.log("\nProgram dihentikan karena kesalahan tak dikenal");
+    }
   } finally {
     rl.close();
   }
